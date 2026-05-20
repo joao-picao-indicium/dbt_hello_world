@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: github_archive
+    database: GITHUB_ANALYTICS
+    schema: RAW
+    tables:
+      - name: github_events
+        description: "Raw GitHub Archive events, one row per event, payload kept as VARIANT."
+        loaded_at_field: ingested_at
+        freshness:
+          warn_after: { count: 2, period: hour }
+          error_after: { count: 6, period: hour }
+        columns:
+          - name: raw_event
+            description: "The full event JSON as a VARIANT."
+          - name: file_name
+            description: "Source filename the row was loaded from (e.g. 2024-01-15-9.json.gz)."
+          - name: ingested_at
+            description: "When this row was loaded into Snowflake."

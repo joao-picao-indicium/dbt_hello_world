@@ -1,0 +1,67 @@
+version: 2
+
+models:
+  - name: stg_github__events
+    description: "One row per GitHub event. Top-level fields extracted; payload kept as VARIANT."
+    columns:
+      - name: event_id
+        description: "Unique event identifier from GitHub."
+        tests:
+          - unique
+          - not_null
+      - name: event_type
+        description: "Event class, e.g. PushEvent, PullRequestEvent."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - PushEvent
+                  - PullRequestEvent
+                  - PullRequestReviewEvent
+                  - PullRequestReviewCommentEvent
+                  - IssuesEvent
+                  - IssueCommentEvent
+                  - WatchEvent
+                  - ForkEvent
+                  - CreateEvent
+                  - DeleteEvent
+                  - ReleaseEvent
+                  - PublicEvent
+                  - MemberEvent
+                  - GollumEvent
+                  - CommitCommentEvent
+              config:
+                severity: warn
+      - name: event_at
+        description: "UTC timestamp when the event occurred."
+        tests:
+          - not_null
+      - name: actor_id
+        description: "ID of the user who triggered the event."
+        tests:
+          - not_null
+      - name: actor_login
+        description: "GitHub username of the user who triggered the event."
+        tests:
+          - not_null
+      - name: repo_id
+        description: "ID of the repository the event happened in."
+        tests:
+          - not_null
+      - name: repo_name
+        description: "Full repository name in owner/repo format."
+        tests:
+          - not_null
+      - name: org_id
+        description: "ID of the organisation, if the repo belongs to one. NULL for personal repos."
+      - name: org_login
+        description: "Login of the organisation. NULL for personal repos."
+      - name: is_public
+        description: "Whether the event was public at the time it occurred."
+      - name: payload
+        description: "Event-specific payload as VARIANT. Structure varies by event_type."
+      - name: file_name
+        description: "Source filename this row was loaded from (e.g. 2024-01-15-9.json.gz)."
+      - name: ingested_at
+        description: "Timestamp when this row was loaded into Snowflake."
