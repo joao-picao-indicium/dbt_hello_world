@@ -56,6 +56,14 @@ def download_hour(date_str: str, hour: int) -> Path:
 # ---------------------------------------------------------------------------
 # Load into Snowflake
 # ---------------------------------------------------------------------------
+def file_already_loaded(conn: snowflake.connector.SnowflakeConnection, file_name: str) -> bool:
+    cur = conn.cursor()
+    cur.execute(f"SELECT 1 FROM {TARGET_TABLE} WHERE file_name = %s LIMIT 1", (file_name,))
+    result = cur.fetchone()
+    cur.close()
+    return result is not None
+
+
 def load_to_snowflake(conn: snowflake.connector.SnowflakeConnection, gz_path: Path):
     cur = conn.cursor()
     stage = f"@%{TARGET_TABLE}"
@@ -68,9 +76,9 @@ def load_to_snowflake(conn: snowflake.connector.SnowflakeConnection, gz_path: Pa
 
     # Load from stage into table — one VARIANT row per JSON line
     result = cur.execute(f"""
-        COPY INTO {TARGET_TABLE} (raw_event, ingested_at)
+        COPY INTO {TARGET_TABLE} (raw_event, ingested_at, file_name)
         FROM (
-            SELECT $1, CURRENT_TIMESTAMP()
+            SELECT $1, CURRENT_TIMESTAMP(), '{gz_path.name}'
             FROM {stage}/{gz_path.name}
         )
         FILE_FORMAT = (
@@ -132,7 +140,12 @@ def run(args):
 
     for date_str, hour in slots:
         label = f"{date_str}-{hour:02d}"
+        file_name = f"{date_str}-{hour}.json.gz"
         try:
+            if file_already_loaded(conn, file_name):
+                print(f"  [{label}] already loaded — skipping\n")
+                skipped += 1
+                continue
             gz_path = download_hour(date_str, hour)
             rows_loaded, rows_error = load_to_snowflake(conn, gz_path)
             gz_path.unlink(missing_ok=True)
