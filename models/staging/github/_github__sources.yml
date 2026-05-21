@@ -9,8 +9,8 @@ sources:
         description: "Raw GitHub Archive events, one row per event, payload kept as VARIANT."
         loaded_at_field: ingested_at
         freshness:
-          warn_after: { count: 2, period: hour }
-          error_after: { count: 6, period: hour }
+          warn_after: { count: 48, period: hour }
+          error_after: { count: 72, period: hour }
         columns:
           - name: raw_event
             description: "The full event JSON as a VARIANT."
