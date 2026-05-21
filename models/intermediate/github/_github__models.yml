@@ -1,0 +1,197 @@
+version: 2
+
+models:
+  - name: int_pull_request_events
+    description: "One row per PullRequestEvent. Payload fields extracted and cast; no VARIANT columns."
+    columns:
+      - name: event_id
+        description: "Unique event identifier from GitHub."
+        tests:
+          - unique
+          - not_null
+      - name: event_at
+        description: "UTC timestamp when the event occurred."
+      - name: actor_id
+        description: "ID of the user who triggered the event."
+        tests:
+          - not_null
+      - name: actor_login
+        description: "GitHub username of the user who triggered the event."
+      - name: repo_id
+        description: "ID of the repository the PR belongs to."
+        tests:
+          - not_null
+      - name: repo_name
+        description: "Full repository name in owner/repo format."
+      - name: action
+        description: "PR action: opened, closed, reopened, edited, synchronize, etc."
+        tests:
+          - not_null
+      - name: pr_id
+        description: "GitHub internal ID of the pull request."
+        tests:
+          - not_null
+      - name: pr_number
+        description: "Pull request number within the repository."
+      - name: pr_state
+        description: "State of the PR at the time of the event: open or closed."
+      - name: pr_title
+        description: "Title of the pull request."
+      - name: pr_author_id
+        description: "GitHub ID of the user who opened the PR."
+      - name: pr_author_login
+        description: "GitHub login of the user who opened the PR."
+      - name: pr_merged
+        description: "True if the PR was merged."
+      - name: pr_merged_at
+        description: "Timestamp when the PR was merged. NULL if not merged."
+      - name: pr_created_at
+        description: "Timestamp when the PR was created."
+      - name: pr_closed_at
+        description: "Timestamp when the PR was closed. NULL if still open."
+      - name: additions
+        description: "Number of lines added."
+      - name: deletions
+        description: "Number of lines deleted."
+      - name: changed_files
+        description: "Number of files changed."
+      - name: commits_count
+        description: "Number of commits in the PR."
+
+  - name: int_issue_events
+    description: "One row per IssuesEvent (open/close/reopen/edit). Does not include issue comments."
+    columns:
+      - name: event_id
+        description: "Unique event identifier from GitHub."
+        tests:
+          - unique
+          - not_null
+      - name: event_at
+        description: "UTC timestamp when the event occurred."
+      - name: actor_id
+        description: "ID of the user who triggered the event."
+        tests:
+          - not_null
+      - name: actor_login
+        description: "GitHub username of the user who triggered the event."
+      - name: repo_id
+        description: "ID of the repository the issue belongs to."
+        tests:
+          - not_null
+      - name: repo_name
+        description: "Full repository name in owner/repo format."
+      - name: action
+        description: "Issue action: opened, closed, reopened, edited, assigned, labeled, etc."
+        tests:
+          - not_null
+      - name: issue_id
+        description: "GitHub internal ID of the issue."
+        tests:
+          - not_null
+      - name: issue_number
+        description: "Issue number within the repository."
+      - name: issue_state
+        description: "State of the issue at the time of the event: open or closed."
+      - name: issue_title
+        description: "Title of the issue."
+      - name: issue_author_id
+        description: "GitHub ID of the user who opened the issue."
+      - name: issue_author_login
+        description: "GitHub login of the user who opened the issue."
+      - name: issue_created_at
+        description: "Timestamp when the issue was created."
+      - name: issue_closed_at
+        description: "Timestamp when the issue was closed. NULL if still open."
+      - name: comments_count
+        description: "Number of comments on the issue at the time of the event."
+
+  - name: int_push_events
+    description: "One row per PushEvent. Commit array summarized; use a LATERAL FLATTEN model for commit-grain analysis."
+    columns:
+      - name: event_id
+        description: "Unique event identifier from GitHub."
+        tests:
+          - unique
+          - not_null
+      - name: event_at
+        description: "UTC timestamp when the event occurred."
+      - name: actor_id
+        description: "ID of the user who pushed."
+        tests:
+          - not_null
+      - name: actor_login
+        description: "GitHub username of the user who pushed."
+      - name: repo_id
+        description: "ID of the repository pushed to."
+        tests:
+          - not_null
+      - name: repo_name
+        description: "Full repository name in owner/repo format."
+      - name: push_id
+        description: "GitHub internal ID of the push."
+        tests:
+          - not_null
+      - name: ref
+        description: "Full git ref pushed to (e.g. refs/heads/main)."
+      - name: branch_name
+        description: "Branch name derived from ref by stripping the refs/heads/ prefix."
+      - name: commit_count
+        description: "Total number of commits in the push (payload:size)."
+      - name: distinct_commit_count
+        description: "Number of distinct commits not previously in the repo (payload:distinct_size)."
+      - name: head_sha
+        description: "SHA of the HEAD commit after the push."
+      - name: before_sha
+        description: "SHA of the HEAD commit before the push."
+
+  - name: int_repos_derived
+    description: >
+      One row per distinct repository observed in events. Attributes reflect the most
+      recently seen values. Feeds dim_repo in marts.
+    columns:
+      - name: repo_id
+        description: "GitHub repository ID."
+        tests:
+          - unique
+          - not_null
+      - name: repo_name
+        description: "Most recently observed full repository name in owner/repo format."
+        tests:
+          - not_null
+      - name: repo_owner
+        description: "Owner login derived from the owner/repo format of repo_name."
+        tests:
+          - not_null
+      - name: org_id
+        description: "Organisation ID if the repo belongs to an org. NULL for personal repos."
+      - name: org_login
+        description: "Organisation login. NULL for personal repos."
+      - name: first_seen_at
+        description: "Earliest event_at observed for this repository."
+      - name: last_seen_at
+        description: "Most recent event_at observed for this repository."
+      - name: event_count
+        description: "Total number of events observed for this repository."
+
+  - name: int_users_derived
+    description: >
+      One row per distinct actor observed in events. Attributes reflect the most
+      recently seen values. Feeds dim_user in marts.
+    columns:
+      - name: actor_id
+        description: "GitHub actor ID."
+        tests:
+          - unique
+          - not_null
+      - name: actor_login
+        description: "Most recently observed GitHub login."
+        tests:
+          - not_null
+      - name: actor_display_login
+        description: "Most recently observed display login."
+      - name: first_seen_at
+        description: "Earliest event_at observed for this actor."
+      - name: last_seen_at
+        description: "Most recent event_at observed for this actor."
+      - name: event_count
+        description: "Total number of events observed for this actor."
